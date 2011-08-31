@@ -29,8 +29,8 @@ CanvasDrawer.prototype._draw = function(drawFunc, transforms) {
 
     if (transforms) {
         for (var i = 0; i < transforms.length; i++) {
-            this.context.rotate(transforms[i].rad);
-            this.context.translate(transforms[i].tx, transforms[i].ty);
+            var m = transforms[i];
+            this.context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
         }
     }
 

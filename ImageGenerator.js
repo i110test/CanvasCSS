@@ -20,51 +20,56 @@ function isValidColor(color) {
     return (alpha > 0);
 }
 
-function getRadian(el) {
-    var deg;
+function getAffineTransform(el) {
     var transform = CSSResolver.resolve(el, '-webkit-transform');
     if (! transform) {
-        return 0;
+        return null;
     }
     if (transform.match(/rotate\((.+?)deg\)/)) {
-        deg = +(RegExp.$1);
-        return deg * Math.PI / 180;
+        var deg = +(RegExp.$1);
+        var rad = deg * Math.PI / 180;
+        return [Math.cos(rad), -Math.sin(rad), Math.sin(rad), Math.cos(rad), 0, 0];
     } else {
         var num = '([\\-\\d\\.]+?)';
         var sep = '\\s*,\\s*';
         var regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)';
         var regex = new RegExp(regex_text);    
         if (transform.match(regex)) {
-            var m11 = RegExp.$1,
-                m12 = RegExp.$2,
-                m21 = RegExp.$3,
-                m22 = RegExp.$4,
-                dx  = RegExp.$5,
-                dy  = RegExp.$6;
-            var rad = Math.acos(m11);
-            return rad;
+            var m11 = +(RegExp.$1),
+                m12 = +(RegExp.$2),
+                m21 = +(RegExp.$3),
+                m22 = +(RegExp.$4),
+                dx  = +(RegExp.$5),
+                dy  = +(RegExp.$6);
+            return [m11, m12, m21, m22, dx, dy];
         }
     }
-    return 0;
+    return null;
 }
 
+function transformVector(vector, transform) {
+    return [
+        transform[0] * vector[0] + transform[1] * vector[1] + transform[4],
+        transform[2] * vector[0] + transform[3] * vector[1] + transform[5]
+    ];
+}
 function getAffineTransforms(el, upto) {
-    var rad, cx, cy, _cx, _cy, tx, ty, transforms = [];
+    var transform, center, transformed_center, tx, ty, transforms = [];
     while(true) {
-        rad = getRadian(el);        
-        if (rad !== 0) {
-            cx = el.offsetLeft + (el.offsetWidth  / 2);
-            cy = el.offsetTop  + (el.offsetHeight / 2);
-            cx_ =  Math.cos(rad) * cx + Math.sin(rad) * cy;
-            cy_ = -Math.sin(rad) * cx + Math.cos(rad) * cy;
-            tx = cx_ - cx;
-            ty = cy_ - cy;
+        transform = getAffineTransform(el);        
+        if (transform) {
+            center = [
+                el.offsetLeft + (el.offsetWidth  / 2),
+                el.offsetTop  + (el.offsetHeight / 2)
+            ];
+            transformed_center = transformVector(center, transform);
+            tx = transformed_center[0] - center[0];
+            ty = transformed_center[1] - center[0];
 
-            transforms.push({
-                rad : rad,
-                tx  : tx,
-                ty  : ty
-            });
+            transform[4] += tx;
+            transform[5] += ty;
+            transforms.push(transform);
+
         }
 
         if (el === upto) {
