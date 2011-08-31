@@ -64,6 +64,22 @@ body {
     left : 100px;
     top : 240px;
 }
+
+#container {
+    position : relative;
+    background-color : #00F;
+}
+#toggleButton {
+    width : 100px;
+    height : 40px;
+    border : 1px ridge black;
+}
+.unfreezed {
+    background-color : #F66;
+}
+.freezed {
+    background-color : #66F;
+}
 </style>
 
 <script type="text/javascript">
@@ -98,12 +114,10 @@ window.pixel = function(x, y) {
     }
     return 'rbga(' + arr.join(', ') + ')'
 }
-var generator;
-window.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('img').addEventListener('click', function() { alert('img clicked'); }, false);
-    document.getElementById('inner').addEventListener('click', function() { alert('inner clicked'); }, false);
-    document.getElementById('target').addEventListener('click', function() { alert('target clicked'); }, false);
 
+var generator;
+
+function freeze() {
     var target = document.getElementById('target');
     generator = new ImageGenerator(target);
     generator.canvas.onclick = function() { alert('canvas clicked'); };
@@ -118,6 +132,37 @@ generator.canvas.addEventListener('click', function() {alert('this is canvas');}
         generator.canvas.style.setProperty('display', 'block');
         document.body.appendChild(generator.canvas);
     });
+}
+function unfreeze() {
+
+}
+function toggleFreezed(freezed) {
+    var toggleButton = document.getElementById('toggleButton');
+    if (freezed) {
+        freeze();
+        toggleButton.className = 'freezed';
+        toggleButton.innerHTML = 'freezed';
+    } else {
+        unfreeze();
+        toggleButton.className = 'unfreezed';
+        toggleButton.innerHTML = 'unfreezed';
+    }
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('toggleButton').addEventListener('click', (function() {
+        var freezed = false;
+        return function() {
+            freezed = ! freezed;
+            toggleFreezed(freezed);  
+        };
+    })(), false);
+
+    document.getElementById('img').addEventListener('click', function() { alert('img clicked'); }, false);
+    document.getElementById('inner').addEventListener('click', function() { alert('inner clicked'); }, false);
+    document.getElementById('target').addEventListener('click', function() { alert('target clicked'); }, false);
+
+
 });
 
 </script>
@@ -131,19 +176,26 @@ generator.canvas.addEventListener('click', function() {alert('this is canvas');}
     <p style="position : relative; z-index: 65535;">hhogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkoogehogekokko</p>
 </div>
 -->
+<!--
+-->
+<div id="toggleButton" class="unfreezed">unfreezed</div>
+<!--
 <div id="radius" class="radius" style="background-color: red; width : 100px; height : 200px"></div>
-<div id="target" class="gradient">
-    <img id="img" class="ocean" src="img/ocean.jpg" />
-    <div id="inner">
-    <!--
-        <div id="inner2"></div>
-    -->
-    </div>
-
-    <div id="inner2">
+-->
+<div class="spacer" style="height : 200px;"></div>
+<div id="container">
+    <div id="target" class="gradient">
+        <img id="img" class="ocean" src="img/ocean.jpg" />
+        <div id="inner">
+        <!--
+            <div id="inner2"></div>
+        -->
+        </div>
+    
+        <div id="inner2">
+        </div>
     </div>
 </div>
-
 </body>
 
 </html>

@@ -47,29 +47,35 @@ function getAffineTransform(el) {
     return null;
 }
 
+function getAffineTransformWithOrigin(el, origin) {
+    var transform = getAffineTransform(el);
+    if (! transform) {
+        return null;
+    }
+    var transformed_origin = transformVector(origin, transform);
+    tx = origin[0] - transformed_origin[0];
+    ty = origin[1] - transformed_origin[1];
+
+    
+    transform[4] += tx;
+    transform[5] += ty;
+
+    return transform;
+}
+
 function transformVector(vector, transform) {
     return [
-        transform[0] * vector[0] + transform[1] * vector[1] + transform[4],
-        transform[2] * vector[0] + transform[3] * vector[1] + transform[5]
+        transform[0] * vector[0] + transform[2] * vector[1] + transform[4],
+        transform[1] * vector[0] + transform[3] * vector[1] + transform[5]
     ];
 }
 function getAffineTransforms(el, upto) {
     var transform, center, transformed_center, tx, ty, transforms = [];
     while(true) {
-        transform = getAffineTransform(el);        
+        center = getOffsetCenter(el);
+        transform = getAffineTransformWithOrigin(el, center);        
         if (transform) {
-            center = [
-                el.offsetLeft + (el.offsetWidth  / 2),
-                el.offsetTop  + (el.offsetHeight / 2)
-            ];
-            transformed_center = transformVector(center, transform);
-            tx = transformed_center[0] - center[0];
-            ty = transformed_center[1] - center[0];
-
-            transform[4] += tx;
-            transform[5] += ty;
             transforms.push(transform);
-
         }
 
         if (el === upto) {
@@ -105,18 +111,74 @@ function calcOffsetTop(el, base) {
     return calcOffset(el, false) - (base ? calcOffset(base, false) : 0);
 }
 
+
+function getOffset(el) {
+    return {
+        l : el.offsetLeft,
+        t : el.offsetTop,
+        r : el.offsetLeft + el.offsetWidth,
+        b : el.offsetTop + el.offsetHeight
+    };
+}
+
+function getGlobalOffset(el) {
+    var l = calcOffsetLeft(el),
+        t = calcOffsetTop(el),
+        r = l + el.offsetWidth,
+        b = t + el.offsetHeight;
+    
+    return {
+        l : l, t : t, r : r, b : b
+    };
+}
+
+function getOffsetCenter(el) {
+    return [
+        el.offsetLeft + (el.offsetWidth  / 2),
+        el.offsetTop  + (el.offsetHeight / 2)
+    ];
+}
+
+function getGlobalOffsetCenter(el) {
+    return [
+        calcGlobalOffsetLeft(el) + (el.offsetWidth  / 2),
+        calcGlobalOffsetLeft(el) + (el.offsetHeight / 2)
+    ];
+}
+
 ImageGenerator.prototype.init = function() {
     function updateRect(el, rect) {
-        var offsetLeft   = calcOffsetLeft(el),
-            offsetTop    = calcOffsetTop(el),
-            offsetRight  = offsetLeft + el.offsetWidth,
-            offsetBottom = offsetTop + el.offsetHeight;
-        rect.l = (offsetLeft   < rect.l) ? offsetLeft   : rect.l;
-        rect.t = (offsetTop    < rect.t) ? offsetTop    : rect.t;
-        rect.r = (offsetRight  > rect.r) ? offsetRight  : rect.r;
-        rect.b = (offsetBottom > rect.b) ? offsetBottom : rect.b;
+        var elRect = getGlobalOffset(el);
+        var i;
+
+        var transform = getAffineTransformWithOrigin(el, getGlobalOffsetCenter(el));
+        if (transform) {
+            var points = [
+                transformVector([elRect.l, elRect.t], transform),
+                transformVector([elRect.r, elRect.t], transform),
+                transformVector([elRect.r, elRect.b], transform),
+                transformVector([elRect.l, elRect.b], transform)
+            ];
+            elRect = {
+                l : Number.POSITIVE_INFINITY,
+                t : Number.POSITIVE_INFINITY,
+                r : Number.NEGATIVE_INFINITY,
+                b : Number.NEGATIVE_INFINITY
+            };
+
+            for (i = 0; i < points.length; i++) {
+                elRect.l = points[i][0] < elRect.l ? points[i][0] : elRect.l;
+                elRect.t = points[i][1] < elRect.t ? points[i][1] : elRect.t;
+                elRect.r = points[i][0] > elRect.r ? points[i][0] : elRect.r;
+                elRect.b = points[i][1] > elRect.b ? points[i][1] : elRect.b;
+            } 
+        }
+        rect.l = (elRect.l < rect.l) ? elRect.l : rect.l;
+        rect.t = (elRect.t < rect.t) ? elRect.t : rect.t;
+        rect.r = (elRect.r > rect.r) ? elRect.r : rect.r;
+        rect.b = (elRect.b > rect.b) ? elRect.b : rect.b;
     
-        for (var i = 0; i < el.children.length; i++) {
+        for ( i = 0; i < el.children.length; i++) {
             updateRect(el.children[i], rect);
         } 
     }
@@ -140,8 +202,12 @@ ImageGenerator.prototype.init = function() {
     this.canvas.height = rect.b - rect.t;
 
     var origin = {
+        x : Math.max(-(rect.l), 0),
+        y : Math.max(-(rect.t), 0)
+/*
         x : (rect.l < 0) ? - rect.l : 0,
         y : (rect.t < 0) ? - rect.t : 0
+*/
     };
     this.drawer = new CanvasDrawer(this.canvas, origin);
 
