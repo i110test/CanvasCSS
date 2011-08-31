@@ -1,0 +1,80 @@
+<html>
+
+<head>
+
+<style type="text/css">
+body {
+    background-image : url("img/ocean.jpg");
+}
+#container {
+    -webkit-transform : rotate(30deg);
+}
+/*
+#img {
+    -webkit-transform : rotate(-30deg);
+}
+*/
+</style>
+
+<script type="text/javascript">
+
+window.addEventListener('DOMContentLoaded', function() {
+
+for (var i = 0; i < 10; i++){
+    //var canvas = document.getElementById('cvs');
+    var canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 480;
+    canvas.style['border'] = '1px solid red';
+
+    var context = canvas.getContext('2d');
+/*
+    context.fillStyle = '#F00';
+    context.fillRect(20, 20, 300, 400);
+*/
+
+    var l = 50, t = 50, w = 200, h = 200;
+    function drawGrad() {
+        var grad = context.createLinearGradient( 40, 10, 100, 300);
+        grad.addColorStop(0.0, '#08F');
+        grad.addColorStop(0.5, '#F0F');
+        grad.addColorStop(1.0, '#88F');
+        context.fillStyle = grad;
+        context.fillRect(l, t, w, h);
+
+    }
+    drawGrad();
+    var deg = (50 * Math.PI / 180);
+    // var dx = 0;
+    // var dy = 0;
+    // context.setTransform(Math.cos(-deg), -Math.sin(-deg), Math.sin(-deg), Math.cos(-deg), dx, dy);
+
+    var cx = l + (w / 2),
+        cy = t + (h / 2);
+    var cx_ =  Math.cos(deg) * cx + Math.sin(deg) * cy,
+        cy_ = -Math.sin(deg) * cx + Math.cos(deg) * cy;
+    var tx = cx_ - cx,
+        ty = cy_ - cy;
+
+    context.rotate(deg);
+    context.translate(tx, ty);
+    drawGrad();
+
+    document.body.appendChild(canvas);
+}
+});
+
+</script>
+
+</head>
+
+<body>
+<div id="container">
+    <img id="img" src="img/fire.jpg" />
+</div>
+<!--
+    <canvas id="cvs"></canvas>
+-->
+</body>
+
+</html>

@@ -1,0 +1,149 @@
+<html>
+
+<head>
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache">
+
+<style type="text/css">
+body {
+    background-color : #88F;
+}
+.gradient {
+    width : 620px;
+    height : 480px;
+    background : -webkit-gradient(linear, left top, right bottom, from(#000), color-stop(0.8, #0F0), to(#00F));
+
+    -webkit-transform : rotate(45deg);
+
+    position : relative;
+}
+.radius {
+    border-top-left-radius : 10px;
+}
+/*
+#target {
+    background-image : url("img/fire.jpg");
+}
+*/
+.hoge, #fuga {}
+.ocean {
+    width : 200px;
+    height : 200px;
+
+    border : 8px solid rgb(77,0,88);
+
+}
+.tmpimg {
+    width : 100px;
+    height : 100px;
+/*
+    background-image : url("img/ocean.jpg");
+*/
+/*
+    background : -webkit-gradient(linear, left top, right bottom, from(rbga(255,0,0,0.5)), to(rbga(0,0,255,0.5)));
+*/
+    background-color : rbga(255, 0, 0, 0.5);
+/*
+    background : -webkit-gradient(linear, left top, right bottom, from(#F00), to(#00F));
+*/
+}
+#inner {
+    width : 200px;
+    height : 200px;
+    position: absolute;
+    left : 250px;
+    top : 100px;
+    background-color : rgba(255, 0, 0, 0.5);
+}
+#inner2 {
+    width : 100px;
+    height : 100px;
+    border : 1px solid black;
+    background-color : #00F;
+    position : absolute;
+    left : 100px;
+    top : 240px;
+}
+</style>
+
+<script type="text/javascript">
+(function() {
+function load(path, nocache) {
+    var tag = '<script type="text/javascript" src="' + path;
+    if (nocache) {
+        tag += '?' + Date.now();
+    }
+    tag += '"></sc' + 'ript>';
+    document.write(tag);
+}
+
+load('CSSResolver.js');
+load('CanvasDrawer.js');
+load('ImageGenerator.js');
+
+})();
+</script>
+<!--
+<script type="text/javascript" src="CSSResolver.js"></script>
+<script type="text/javascript" src="CanvasDrawer.js"></script>
+<script type="text/javascript" src="ImageGenerator.js"></script>
+-->
+<script type="text/javascript">
+
+window.pixel = function(x, y) {
+    var data = generator.canvas.getContext('2d').getImageData(x,y,1,1).data;
+    var arr = [];
+    for (var i = 0; i < data.length; i++) {
+        arr.push(data[i]);
+    }
+    return 'rbga(' + arr.join(', ') + ')'
+}
+var generator;
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('img').addEventListener('click', function() { alert('img clicked'); }, false);
+    document.getElementById('inner').addEventListener('click', function() { alert('inner clicked'); }, false);
+    document.getElementById('target').addEventListener('click', function() { alert('target clicked'); }, false);
+
+    var target = document.getElementById('target');
+    generator = new ImageGenerator(target);
+    generator.canvas.onclick = function() { alert('canvas clicked'); };
+    generator.preloadImages(function() {
+        generator.init();
+
+        generator.draw();
+
+        generator.place();
+        generator.freeze();
+generator.canvas.addEventListener('click', function() {alert('this is canvas');}, false);
+        generator.canvas.style.setProperty('display', 'block');
+        document.body.appendChild(generator.canvas);
+    });
+});
+
+</script>
+
+</head>
+
+<body>
+<!--
+<div id="container" style="width : 400px; height : 300px; border: 5px solid red">
+    <img src="img/ocean.jpg" width="400", height="300", style="width : 400px; height : 300px; position:absolute; left : 200px" />
+    <p style="position : relative; z-index: 65535;">hhogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkohogehogekokkoogehogekokko</p>
+</div>
+-->
+<div id="radius" class="radius" style="background-color: red; width : 100px; height : 200px"></div>
+<div id="target" class="gradient">
+    <img id="img" class="ocean" src="img/ocean.jpg" />
+    <div id="inner">
+    <!--
+        <div id="inner2"></div>
+    -->
+    </div>
+
+    <div id="inner2">
+    </div>
+</div>
+
+</body>
+
+</html>
