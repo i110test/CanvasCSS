@@ -105,13 +105,19 @@ function calcOffset(el, isLeft) {
     return (isLeft ? el.offsetLeft : el.offsetTop) + calcOffset(el.offsetParent, isLeft);
 }
 function calcOffsetLeft(el, base) {
+    if (base === el) {
+        return 0;
+    }
     return calcOffset(el, true) - (base ? calcOffset(base, true) : 0);
 }
 function calcOffsetTop(el, base) {
+    if (base === el) {
+        return 0;
+    }
     return calcOffset(el, false) - (base ? calcOffset(base, false) : 0);
 }
 
-
+/*
 function getOffset(el) {
     return {
         l : el.offsetLeft,
@@ -120,10 +126,12 @@ function getOffset(el) {
         b : el.offsetTop + el.offsetHeight
     };
 }
+*/
 
-function getGlobalOffset(el) {
-    var l = calcOffsetLeft(el),
-        t = calcOffsetTop(el),
+function getOffsetRect(el, base) {
+    base = base || el.offsetParent;
+    var l = calcOffsetLeft(el, base),
+        t = calcOffsetTop(el, base),
         r = l + el.offsetWidth,
         b = t + el.offsetHeight;
     
@@ -132,26 +140,31 @@ function getGlobalOffset(el) {
     };
 }
 
+/*
 function getOffsetCenter(el) {
     return [
         el.offsetLeft + (el.offsetWidth  / 2),
         el.offsetTop  + (el.offsetHeight / 2)
     ];
 }
+*/
 
-function getGlobalOffsetCenter(el) {
+function getOffsetCenter(el, base) {
+    base = base || el.offsetParent; 
     return [
-        calcGlobalOffsetLeft(el) + (el.offsetWidth  / 2),
-        calcGlobalOffsetLeft(el) + (el.offsetHeight / 2)
+        calcOffsetLeft(el, base) + (el.offsetWidth  / 2),
+        calcOffsetTop(el, base)  + (el.offsetHeight / 2)
     ];
 }
 
 ImageGenerator.prototype.init = function() {
+
     function updateRect(el, rect) {
-        var elRect = getGlobalOffset(el);
+        var elRect = getOffsetRect(el);
+        var center = getOffsetCenter(el);
         var i;
 
-        var transform = getAffineTransformWithOrigin(el, getGlobalOffsetCenter(el));
+        var transform = getAffineTransformWithOrigin(el, center);
         if (transform) {
             var points = [
                 transformVector([elRect.l, elRect.t], transform),
@@ -190,14 +203,14 @@ ImageGenerator.prototype.init = function() {
         b : Number.NEGATIVE_INFINITY 
     };
     updateRect(this.element, rect);
-
+/*
     var anchorLeft = calcOffsetLeft(this.element);
     var anchorTop  = calcOffsetTop(this.element);
     rect.l -= anchorLeft;
     rect.r -= anchorLeft;
     rect.t -= anchorTop;
     rect.b -= anchorTop;
-
+*/
     this.canvas.width  = rect.r - rect.l;
     this.canvas.height = rect.b - rect.t;
 

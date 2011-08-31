@@ -11,7 +11,8 @@ body {
 .gradient {
     width : 620px;
     height : 480px;
-    background : -webkit-gradient(linear, left top, right bottom, from(#000), color-stop(0.8, #0F0), to(#00F));
+    background : -webkit-gradient(linear, left top, right bottom,
+                 from(#F00), color-stop(0.2, #0F0), color-stop(0.4, #FF0), color-stop(0.6, #0FF), color-stop(0.8, #F0F), to(#00F));
 
     -webkit-transform : rotate(45deg);
 
@@ -27,7 +28,7 @@ body {
 */
 .hoge, #fuga {}
 .ocean {
-    width : 200px;
+    width : 300px;
     height : 200px;
 
     border : 8px solid rgb(77,0,88);
@@ -82,38 +83,10 @@ body {
 }
 </style>
 
-<script type="text/javascript">
-(function() {
-function load(path, nocache) {
-    var tag = '<script type="text/javascript" src="' + path;
-    if (nocache) {
-        tag += '?' + Date.now();
-    }
-    tag += '"></sc' + 'ript>';
-    document.write(tag);
-}
-
-load('CSSResolver.js');
-load('CanvasDrawer.js');
-load('ImageGenerator.js');
-
-})();
-</script>
-<!--
 <script type="text/javascript" src="CSSResolver.js"></script>
 <script type="text/javascript" src="CanvasDrawer.js"></script>
 <script type="text/javascript" src="ImageGenerator.js"></script>
--->
 <script type="text/javascript">
-
-window.pixel = function(x, y) {
-    var data = generator.canvas.getContext('2d').getImageData(x,y,1,1).data;
-    var arr = [];
-    for (var i = 0; i < data.length; i++) {
-        arr.push(data[i]);
-    }
-    return 'rbga(' + arr.join(', ') + ')'
-}
 
 var generator;
 

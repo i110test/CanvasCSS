@@ -19,13 +19,11 @@ CanvasDrawer = function(canvas, origin) {
         height : this.canvas.height - this.origin.y
     };
 };
-CanvasDrawer.prototype._startDraw = function(transforms) {
-};
-CanvasDrawer.prototype.tear_endDraw = function() {
-};
 
 CanvasDrawer.prototype._draw = function(drawFunc, transforms) {
     this.context.save();
+
+    this.context.translate(this.origin.x, this.origin.y);
 
     if (transforms) {
         for (var i = 0; i < transforms.length; i++) {
@@ -48,7 +46,7 @@ CanvasDrawer.prototype.fillRect = function fillRect(args) {
 
     this._draw(function() {
         this.context.fillStyle = style;
-        this.context.fillRect(this.origin.x + x, this.origin.y + y, w, h);
+        this.context.fillRect(x, y, w, h);
     }, transforms);
     
 };
@@ -87,10 +85,10 @@ CanvasDrawer.prototype.drawBorderLine = function drawLine(args) {
     this._draw(function() {
         this.context.strokeStyle = style;
         this.context.lineWidth = width;
-
+// TODO: diffX and diffY should be here?
         this.context.beginPath();
-        this.context.moveTo(this.origin.x + x1 + diffX1, this.origin.y + y1 + diffY1);
-        this.context.lineTo(this.origin.x + x2 + diffX2, this.origin.y + y2 + diffY2);
+        this.context.moveTo(x1 + diffX1, y1 + diffY1);
+        this.context.lineTo(x2 + diffX2, y2 + diffY2);
         this.context.stroke();
     }, transforms);
 };
@@ -115,7 +113,7 @@ CanvasDrawer.prototype.drawImage = function drawImage(args) {
         this.context.drawImage(
             img, 
             sr.x, sr.y, sr.w, sr.h, 
-            this.origin.x + dr.x, this.origin.y + dr.y, dr.w, dr.h
+            dr.x, dr.y, dr.w, dr.h
         );
     }, transforms);
 };
@@ -127,7 +125,7 @@ CanvasDrawer.prototype.drawLinearGradient = function drawLinearGradient(args) {
         transforms = args.transforms;
 
     grad = this.context.createLinearGradient(
-        this.origin.x + start.x, this.origin.y + start.y, this.origin.x + end.x, this.origin.y + end.y);
+        start.x, start.y, end.x, end.y);
 
     colorStops.forEach(function(colorStop) {
         grad.addColorStop(colorStop.pos, colorStop.color);
@@ -135,7 +133,7 @@ CanvasDrawer.prototype.drawLinearGradient = function drawLinearGradient(args) {
 
     this._draw(function() {
         this.context.fillStyle = grad;
-        this.context.fillRect(this.origin.x + region.x1, this.origin.y + region.y1, this.origin.x + region.x2, this.origin.y + region.y2);
+        this.context.fillRect(region.x1, region.y1, region.x2, region.y2);
     }, transforms);
 };
 
