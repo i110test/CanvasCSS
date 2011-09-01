@@ -1,4 +1,4 @@
-var CanvasDrawer;
+var CSSRenderer;
 
 (function() {
 
@@ -10,7 +10,7 @@ function applyDefault(obj, def) {
         }
     }
 }
-CanvasDrawer = function(canvas, origin) {
+CSSRenderer = function(canvas, origin) {
     this.canvas = canvas;
     this.context = this.canvas.getContext('2d');
     this.origin = origin;
@@ -20,7 +20,7 @@ CanvasDrawer = function(canvas, origin) {
     };
 };
 
-CanvasDrawer.prototype._draw = function(drawFunc, transforms) {
+CSSRenderer.prototype._draw = function(drawFunc, transforms) {
     this.context.save();
 
     this.context.translate(this.origin.x, this.origin.y);
@@ -36,7 +36,7 @@ CanvasDrawer.prototype._draw = function(drawFunc, transforms) {
 
     this.context.restore();
 };
-CanvasDrawer.prototype.fillRect = function fillRect(args) {
+CSSRenderer.prototype.fillRect = function fillRect(args) {
     var x = args.x || 0,
         y = args.y || 0,
         w = args.w || this.size.width,
@@ -50,7 +50,7 @@ CanvasDrawer.prototype.fillRect = function fillRect(args) {
     }, transforms);
     
 };
-CanvasDrawer.prototype.drawBorderLine = function drawLine(args) {
+CSSRenderer.prototype.drawBorderLine = function drawLine(args) {
     var x1 = args.x1,
         y1 = args.y1,
         x2 = args.x2,
@@ -92,7 +92,7 @@ CanvasDrawer.prototype.drawBorderLine = function drawLine(args) {
         this.context.stroke();
     }, transforms);
 };
-CanvasDrawer.prototype.drawImage = function drawImage(args) {
+CSSRenderer.prototype.drawImage = function drawImage(args) {
     var url = args.url,
         img = new Image(),
         sr, dr,
@@ -117,7 +117,7 @@ CanvasDrawer.prototype.drawImage = function drawImage(args) {
         );
     }, transforms);
 };
-CanvasDrawer.prototype.drawLinearGradient = function drawLinearGradient(args) {
+CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
     var region  = args.region || { x1 : 0, y1 : 0, x2 : this.size.width, y2 : this.size.height },
         start = args.start || { x : 0, y : 0 },
         end   = args.end   || { x : 0, y : this.size.height },

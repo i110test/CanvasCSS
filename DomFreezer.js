@@ -1,4 +1,4 @@
-var ImageGenerator;
+var DomFreezer;
 
 (function() {
 
@@ -81,20 +81,22 @@ function getAffineTransforms(el, upto) {
         if (el === upto) {
             break;
         }
-        el = el.offsetParent;
+        // TODO: is this correct? offsetParent or not?
+        el = el.parentElement;
         if (! el) {
-            throw new Error('fuck');
+            break;
+            //throw new Error('fuck');
         }
     }
 
     return transforms;
 }
 
-ImageGenerator = function(el) {
+DomFreezer = function(el) {
     this.element = el; 
     this.canvas = document.createElement('canvas');
     this.canvas.style.setProperty('display', 'none');
-    this.drawer = undefined;
+    this.renderer = undefined;
 };
 
 
@@ -157,7 +159,7 @@ function getOffsetCenter(el, base) {
     ];
 }
 
-ImageGenerator.prototype.init = function() {
+DomFreezer.prototype.init = function() {
 
     function updateRect(el, rect) {
         var elRect = getOffsetRect(el);
@@ -222,11 +224,11 @@ ImageGenerator.prototype.init = function() {
         y : (rect.t < 0) ? - rect.t : 0
 */
     };
-    this.drawer = new CanvasDrawer(this.canvas, origin);
+    this.renderer = new CSSRenderer(this.canvas, origin);
 
 };
 
-ImageGenerator.prototype._parseGradientPosition = function(pos, base) {
+DomFreezer.prototype._parseGradientPosition = function(pos, base) {
     if (/px$/.test(pos)) {
         return numerize(pos);
     } else if (/%$/.test(pos)) {
@@ -242,7 +244,7 @@ ImageGenerator.prototype._parseGradientPosition = function(pos, base) {
     }
 };
 
-ImageGenerator.prototype.preloadImages = function(callback) {
+DomFreezer.prototype.preloadImages = function(callback) {
     var that = this;
 
     function collectImageUrls(el) {
@@ -284,7 +286,7 @@ ImageGenerator.prototype.preloadImages = function(callback) {
     });
 };
 
-ImageGenerator.prototype._extractImageUrl = function(el) {
+DomFreezer.prototype._extractImageUrl = function(el) {
     if (el.tagName === 'IMG' && el.src) {
         return el.src;
     } 
@@ -294,7 +296,7 @@ ImageGenerator.prototype._extractImageUrl = function(el) {
     }
     return undefined;
 };
-ImageGenerator.prototype._extractGradientArgs = function(el, context) {
+DomFreezer.prototype._extractGradientArgs = function(el, context) {
     var styleText = CSSResolver.resolve(el, 'background-image');
     if (! /-webkit-gradient/.test(styleText)) {
         return null;
@@ -355,10 +357,10 @@ ImageGenerator.prototype._extractGradientArgs = function(el, context) {
         transforms : getAffineTransforms(el, this.element)
     };
 };
-ImageGenerator.prototype.drawElementBackgroundColor = function(el) {
+DomFreezer.prototype.drawElementBackgroundColor = function(el) {
     var bgcolor = CSSResolver.resolve(el, 'background-color');
     if (bgcolor && isValidColor(bgcolor)) {
-        this.drawer.fillRect({
+        this.renderer.fillRect({
             x : calcOffsetLeft(el, this.element) + el.clientLeft,
             y : calcOffsetTop(el, this.element) + el.clientTop,
             w : el.clientWidth,
@@ -368,7 +370,7 @@ ImageGenerator.prototype.drawElementBackgroundColor = function(el) {
         });
     }
 };
-ImageGenerator.prototype.drawElementBorder = function(el) {
+DomFreezer.prototype.drawElementBorder = function(el) {
     // TODO: handling border-radius
     var sides = ['left', 'top', 'right', 'bottom'];
     for (var i = 0; i < sides.length; i++) {
@@ -396,7 +398,7 @@ ImageGenerator.prototype.drawElementBorder = function(el) {
             ey = relTop + el.offsetHeight;
         }
 
-        this.drawer.drawBorderLine({
+        this.renderer.drawBorderLine({
             x1 : sx,
             y1 : sy,
             x2 : ex,
@@ -408,13 +410,13 @@ ImageGenerator.prototype.drawElementBorder = function(el) {
         });
     }
 };
-ImageGenerator.prototype.drawElementGradient = function(el) {
+DomFreezer.prototype.drawElementGradient = function(el) {
     var args = this._extractGradientArgs(el, this.element);
     if (args) {
-        this.drawer.drawLinearGradient(args);
+        this.renderer.drawLinearGradient(args);
     }
 };
-ImageGenerator.prototype.drawElementImage = function(el) {
+DomFreezer.prototype.drawElementImage = function(el) {
     var imageUrl = this._extractImageUrl(el);
     if (imageUrl && this.loadedImages[imageUrl]) {
         var image = this.loadedImages[imageUrl];
@@ -448,7 +450,7 @@ ImageGenerator.prototype.drawElementImage = function(el) {
 
         for (var i = 0; i < rows; i++) {
             for (var j = 0; j < cols; j++) {
-                this.drawer.drawImage({
+                this.renderer.drawImage({
                     url : imageUrl,
                     destRect : {
                         x : offsetLeft + el.clientLeft + destWidth  * j,
@@ -462,7 +464,7 @@ ImageGenerator.prototype.drawElementImage = function(el) {
         }
     }
 };
-ImageGenerator.prototype.draw = function(el) {
+DomFreezer.prototype.draw = function(el) {
     el = el || this.element;
 
     this.drawElementBackgroundColor(el);
@@ -475,22 +477,22 @@ ImageGenerator.prototype.draw = function(el) {
     }
 };
 // TODO: store old styles
-ImageGenerator.prototype.eraseElementBackground = function(el) {
+DomFreezer.prototype.eraseElementBackground = function(el) {
     el.style.setProperty('background-color', 'transparent');
 };
-ImageGenerator.prototype.eraseElementGradientAndImage = function(el) {
+DomFreezer.prototype.eraseElementGradientAndImage = function(el) {
     el.style.setProperty('background-image', 'none');
     if (el.tagName === 'IMG') {
         el.src = 'img/dummy.png';
     }
 };
-ImageGenerator.prototype.eraseElementBorder = function(el) {
+DomFreezer.prototype.eraseElementBorder = function(el) {
     var sides = ['left', 'top', 'right', 'bottom'];
     for (var i = 0; i < sides.length; i++) {
         el.style.setProperty('border-' + sides[i] + '-width', '0');
     }
 };
-ImageGenerator.prototype.erase = function(el) {
+DomFreezer.prototype.erase = function(el) {
     el = el || this.element;
 
     this.eraseElementBackground(el);
@@ -502,23 +504,26 @@ ImageGenerator.prototype.erase = function(el) {
     }
 };
 
-ImageGenerator.prototype.place = function() {
-    this.canvas.style.setProperty('position', 'absolute');
-    this.canvas.style.setProperty('left', (calcOffsetLeft(this.element) - this.drawer.origin.x) + 'px');
-    this.canvas.style.setProperty('top',  (calcOffsetTop(this.element) - this.drawer.origin.y) + 'px');
-    this.canvas.style.setProperty('z-index', '10000'); // TODO: replace magic number
+DomFreezer.prototype.place = function() {
+    var parentNode = this.element.parentNode;
 
-    var parent = this.element.parentNode;
-    if (parent.firstChild !== this.canvas) {
-        parent.insertBefore(this.canvas, parent.firstChild);
+    this.canvas.style.setProperty('position', 'absolute');
+    this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
+    this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
+    //this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
+
+    if (parentNode.firstChild !== this.canvas) {
+        parentNode.insertBefore(this.canvas, parentNode.firstChild);
     }
+
+    // document.body.appendChild(this.canvas);
 };
-ImageGenerator.prototype.freeze = function() {
+DomFreezer.prototype.freeze = function() {
     // this.element.style.setProperty('visibility', 'hidden');
     this.erase(this.element);
     this.canvas.style.setProperty('display', 'block');
 };
-ImageGenerator.prototype.unfreeze = function() {
+DomFreezer.prototype.unfreeze = function() {
     // this.element.style.setProperty('visibility', 'visible');
     this.canvas.style.setProperty('display', 'none');
     throw new Error('not implemented yet');

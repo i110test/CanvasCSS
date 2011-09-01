@@ -8,18 +8,27 @@
 body {
     background-color : #88F;
 }
+#target {
+    -webkit-transform : rotate(45deg);
+/*
+    position : relative;
+*/
+}
 .gradient {
     width : 620px;
     height : 480px;
     background : -webkit-gradient(linear, left top, right bottom,
                  from(#F00), color-stop(0.2, #0F0), color-stop(0.4, #FF0), color-stop(0.6, #0FF), color-stop(0.8, #F0F), to(#00F));
 
-    -webkit-transform : rotate(45deg);
 
-    position : relative;
 }
 .radius {
     border-top-left-radius : 10px;
+}
+
+.rotate45 {
+    
+    -webkit-transform : rotate(45deg);
 }
 /*
 #target {
@@ -84,26 +93,26 @@ body {
 </style>
 
 <script type="text/javascript" src="CSSResolver.js"></script>
-<script type="text/javascript" src="CanvasDrawer.js"></script>
-<script type="text/javascript" src="ImageGenerator.js"></script>
+<script type="text/javascript" src="CSSRenderer.js"></script>
+<script type="text/javascript" src="DomFreezer.js"></script>
 <script type="text/javascript">
 
-var generator;
+var freezer;
 
 function freeze() {
     var target = document.getElementById('target');
-    generator = new ImageGenerator(target);
-    generator.canvas.onclick = function() { alert('canvas clicked'); };
-    generator.preloadImages(function() {
-        generator.init();
+    freezer = new DomFreezer(target);
+    freezer.canvas.addEventListener('click', function(e) {
+        alert('canvas clicked');
+    }, false);
+    freezer.preloadImages(function() {
+        freezer.init();
 
-        generator.draw();
+        freezer.draw();
 
-        generator.place();
-        generator.freeze();
-generator.canvas.addEventListener('click', function() {alert('this is canvas');}, false);
-        generator.canvas.style.setProperty('display', 'block');
-        document.body.appendChild(generator.canvas);
+        freezer.place();
+        freezer.freeze();
+
     });
 }
 function unfreeze() {
@@ -131,6 +140,7 @@ window.addEventListener('DOMContentLoaded', function() {
         };
     })(), false);
 
+    document.getElementById('container').addEventListener('click', function() { alert('container clicked'); }, false);
     document.getElementById('img').addEventListener('click', function() { alert('img clicked'); }, false);
     document.getElementById('inner').addEventListener('click', function() { alert('inner clicked'); }, false);
     document.getElementById('target').addEventListener('click', function() { alert('target clicked'); }, false);
