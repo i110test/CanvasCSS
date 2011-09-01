@@ -314,15 +314,12 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
     }
 
     var m;
-    var start, end;
     var sx, sy, ex, ey;
     if ((m = styleText.match(/-webkit-gradient\(linear,\s*(.*?)\s+(.*?),\s*(.*?)\s+(.*?),/))) {
         sx = this._parseGradientPosition(m[1], el.clientWidth);
         sy = this._parseGradientPosition(m[2], el.clientHeight);
         ex = this._parseGradientPosition(m[3], el.clientWidth);
         ey = this._parseGradientPosition(m[4], el.clientHeight);
-        start = { x : sx, y : sy };
-        end   = { x : ex, y : ey };
     } else {
         throw 'fuck';
     }
@@ -342,6 +339,15 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
 
     var offsetLeft = calcOffsetLeft(el, context);
     var offsetTop  = calcOffsetTop(el, context);
+
+    var start = {
+		x : offsetLeft + el.clientLeft + sx,
+		y : offsetTop  + el.clientTop  + sy
+	};
+	var end = {
+		x : offsetLeft + el.clientLeft + ex,
+		y : offsetTop  + el.clientTop  + ey
+	};
     var region = {
         x1 : offsetLeft + el.clientLeft,
         y1 : offsetTop  + el.clientTop,
@@ -350,8 +356,8 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
     };
 
     return {
-        start : { x : sx, y : sy },
-        end   : { x : ex, y : ey },
+        start : start,
+        end   : end,
         region : region,
         colorStops : colorStops,
         transforms : getAffineTransforms(el, this.element)
