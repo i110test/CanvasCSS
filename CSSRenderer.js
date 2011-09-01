@@ -118,7 +118,7 @@ CSSRenderer.prototype.drawImage = function drawImage(args) {
     }, transforms);
 };
 CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
-    var region  = args.region || { x1 : 0, y1 : 0, x2 : this.size.width, y2 : this.size.height },
+    var region  = args.region || { x : 0, y : 0, width : this.size.width, height : this.size.height },
         start = args.start || { x : 0, y : 0 },
         end   = args.end   || { x : 0, y : this.size.height },
         colorStops = args.colorStops,
@@ -133,7 +133,7 @@ CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
 
     this._draw(function() {
         this.context.fillStyle = grad;
-        this.context.fillRect(region.x1, region.y1, region.x2, region.y2);
+        this.context.fillRect(region.x, region.y, region.width, region.height);
     }, transforms);
 };
 

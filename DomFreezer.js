@@ -349,10 +349,10 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
 		y : offsetTop  + el.clientTop  + ey
 	};
     var region = {
-        x1 : offsetLeft + el.clientLeft,
-        y1 : offsetTop  + el.clientTop,
-        x2 : offsetLeft + el.clientLeft + el.clientWidth,
-        y2 : offsetTop  + el.clientTop + el.clientHeight
+        x : offsetLeft + el.clientLeft,
+        y : offsetTop  + el.clientTop,
+        width  : el.clientWidth,
+        height : el.clientHeight
     };
 
     return {
