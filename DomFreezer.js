@@ -98,7 +98,7 @@ DomFreezer = function(el) {
     this.canvas.style.setProperty('display', 'none');
     this.renderer = undefined;
 };
-
+DomFreezer.DUMMY_IMAGE = 'img/dummy.png';
 
 function calcOffset(el, isLeft) {
     if (! el) {
@@ -483,7 +483,7 @@ DomFreezer.prototype.eraseElementBackground = function(el) {
 DomFreezer.prototype.eraseElementGradientAndImage = function(el) {
     el.style.setProperty('background-image', 'none');
     if (el.tagName === 'IMG') {
-        el.src = 'img/dummy.png';
+        el.src = DomFreezer.DUMMY_IMAGE;
     }
 };
 DomFreezer.prototype.eraseElementBorder = function(el) {
