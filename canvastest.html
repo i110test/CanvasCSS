@@ -103,7 +103,7 @@ function freeze() {
     var target = document.getElementById('target');
     freezer = new DomFreezer(target);
     freezer.canvas.addEventListener('click', function(e) {
-        alert('canvas clicked');
+        console.log('canvas clicked');
     }, false);
     freezer.preloadImages(function() {
         freezer.init();
@@ -140,10 +140,10 @@ window.addEventListener('DOMContentLoaded', function() {
         };
     })(), false);
 
-    document.getElementById('container').addEventListener('click', function() { alert('container clicked'); }, false);
-    document.getElementById('img').addEventListener('click', function() { alert('img clicked'); }, false);
-    document.getElementById('inner').addEventListener('click', function() { alert('inner clicked'); }, false);
-    document.getElementById('target').addEventListener('click', function() { alert('target clicked'); }, false);
+    document.getElementById('container').addEventListener('click', function() { console.log('container clicked'); }, false);
+    document.getElementById('img').addEventListener('click', function() { console.log('img clicked'); }, false);
+    document.getElementById('inner').addEventListener('click', function() { console.log('inner clicked'); }, false);
+    document.getElementById('target').addEventListener('click', function() { console.log('target clicked'); }, false);
 
 
 });

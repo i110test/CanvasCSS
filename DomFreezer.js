@@ -72,15 +72,15 @@ function transformVector(vector, transform) {
 function getAffineTransforms(el, upto) {
     var transform, center, transformed_center, tx, ty, transforms = [];
     while(true) {
+        if (el === upto) {
+            break;
+        }
         center = getOffsetCenter(el);
         transform = getAffineTransformWithOrigin(el, center);        
         if (transform) {
             transforms.push(transform);
         }
 
-        if (el === upto) {
-            break;
-        }
         // TODO: is this correct? offsetParent or not?
         el = el.parentElement;
         if (! el) {
@@ -510,12 +510,14 @@ DomFreezer.prototype.place = function() {
     this.canvas.style.setProperty('position', 'absolute');
     this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
     this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
-    //this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
+    this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
 
+    this.element.insertBefore(this.canvas, this.element.firstChild);
+/*
     if (parentNode.firstChild !== this.canvas) {
         parentNode.insertBefore(this.canvas, parentNode.firstChild);
     }
-
+*/
     // document.body.appendChild(this.canvas);
 };
 DomFreezer.prototype.freeze = function() {
