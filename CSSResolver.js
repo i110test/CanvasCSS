@@ -8,9 +8,9 @@ C._calcSelectorScore = function(selectorText) {
     for (var i = 0; i < ancestry.length; i++) {
         var c = ancestry[i].charAt(0);
         if (c === '#') {
-            score += 100;
+            score += 0xffff;
         } else if (c === '.') {
-            score += 10;
+            score += 0xff;
         } else if (c === '*') {
         } else {
             score += 1;

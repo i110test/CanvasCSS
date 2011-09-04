@@ -20,76 +20,49 @@ function isValidColor(color) {
     return (alpha > 0);
 }
 
+var transform_matrix_regex = (function() {
+    var num = '([\\-\\d\\.]+?)',
+    	sep = '\\s*,\\s*',
+    	regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)',
+    	regex = new RegExp(regex_text);
+	return regex;
+})();
+var transform_rotate_regex = /rotate\((.+?)deg\)/;
+
 function getAffineTransform(el) {
     var transform = CSSResolver.resolve(el, '-webkit-transform');
     if (! transform) {
         return null;
     }
-    if (transform.match(/rotate\((.+?)deg\)/)) {
+    if (transform.match(transform_matrix_regex)) {
+        var m11 = +(RegExp.$1),
+            m12 = +(RegExp.$2),
+            m21 = +(RegExp.$3),
+            m22 = +(RegExp.$4),
+            dx  = +(RegExp.$5),
+            dy  = +(RegExp.$6);
+        return [m11, m12, m21, m22, dx, dy];
+    } else if (transform.match(transform_rotate_regex)) {
         var deg = +(RegExp.$1);
         var rad = deg * Math.PI / 180;
         return [Math.cos(rad), -Math.sin(rad), Math.sin(rad), Math.cos(rad), 0, 0];
-    } else {
-        var num = '([\\-\\d\\.]+?)';
-        var sep = '\\s*,\\s*';
-        var regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)';
-        var regex = new RegExp(regex_text);    
-        if (transform.match(regex)) {
-            var m11 = +(RegExp.$1),
-                m12 = +(RegExp.$2),
-                m21 = +(RegExp.$3),
-                m22 = +(RegExp.$4),
-                dx  = +(RegExp.$5),
-                dy  = +(RegExp.$6);
-            return [m11, m12, m21, m22, dx, dy];
-        }
     }
     return null;
 }
 
 function getAffineTransformWithOrigin(el, origin) {
-    var transform = getAffineTransform(el);
+    var transform = DomFreezer.exports.getAffineTransform(el);
     if (! transform) {
         return null;
     }
-    var transformed_origin = transformVector(origin, transform);
+    var transformed_origin = Geometry.transformVector(origin, transform);
     tx = origin[0] - transformed_origin[0];
     ty = origin[1] - transformed_origin[1];
 
-    
     transform[4] += tx;
     transform[5] += ty;
 
     return transform;
-}
-
-function transformVector(vector, transform) {
-    return [
-        transform[0] * vector[0] + transform[2] * vector[1] + transform[4],
-        transform[1] * vector[0] + transform[3] * vector[1] + transform[5]
-    ];
-}
-function getAffineTransforms(el, upto) {
-    var transform, center, transformed_center, tx, ty, transforms = [];
-    while(true) {
-        if (el === upto) {
-            break;
-        }
-        center = getOffsetCenter(el);
-        transform = getAffineTransformWithOrigin(el, center);        
-        if (transform) {
-            transforms.push(transform);
-        }
-
-        // TODO: is this correct? offsetParent or not?
-        el = el.parentElement;
-        if (! el) {
-            break;
-            //throw new Error('fuck');
-        }
-    }
-
-    return transforms;
 }
 
 DomFreezer = function(el) {
@@ -99,6 +72,11 @@ DomFreezer = function(el) {
     this.renderer = undefined;
 };
 DomFreezer.DUMMY_IMAGE = 'img/dummy.png';
+DomFreezer.exports = {
+	getAffineTransform : getAffineTransform,
+	getAffineTransformWithOrigin : getAffineTransformWithOrigin,
+	
+};
 
 function calcOffset(el, isLeft) {
     if (! el) {
@@ -151,6 +129,33 @@ function getOffsetCenter(el) {
 }
 */
 
+DomFreezer.prototype.getTransforms = function(el, upto) {
+	upto = upto || this.element;
+    var transform, center, transformed_center, tx, ty, transforms;
+    while(true) {
+        if (el === upto) {
+            break;
+        }
+        center = getOffsetCenter(el);
+        transform = DomFreezer.exports.getAffineTransformWithOrigin(el, center);        
+        if (transform) {
+			if (! transforms) {
+				transforms = [];
+			}
+            transforms.push(transform);
+        }
+
+        // TODO: is this correct? offsetParent or not?
+        el = el.parentElement;
+        if (! el) {
+            break;
+            //throw new Error('fuck');
+        }
+    }
+
+    return transforms;
+}
+
 function getOffsetCenter(el, base) {
     base = base || el.offsetParent; 
     return [
@@ -166,13 +171,13 @@ DomFreezer.prototype.init = function() {
         var center = getOffsetCenter(el);
         var i;
 
-        var transform = getAffineTransformWithOrigin(el, center);
+        var transform = DomFreezer.exports.getAffineTransformWithOrigin(el, center);
         if (transform) {
             var points = [
-                transformVector([elRect.l, elRect.t], transform),
-                transformVector([elRect.r, elRect.t], transform),
-                transformVector([elRect.r, elRect.b], transform),
-                transformVector([elRect.l, elRect.b], transform)
+                Geometry.transformVector([elRect.l, elRect.t], transform),
+                Geometry.transformVector([elRect.r, elRect.t], transform),
+                Geometry.transformVector([elRect.r, elRect.b], transform),
+                Geometry.transformVector([elRect.l, elRect.b], transform)
             ];
             elRect = {
                 l : Number.POSITIVE_INFINITY,
@@ -360,7 +365,7 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
         end   : end,
         region : region,
         colorStops : colorStops,
-        transforms : getAffineTransforms(el, this.element)
+        transforms : this.getTransforms(el)
     };
 };
 DomFreezer.prototype.drawElementBackgroundColor = function(el) {
@@ -372,7 +377,7 @@ DomFreezer.prototype.drawElementBackgroundColor = function(el) {
             w : el.clientWidth,
             h : el.clientHeight,
             style : bgcolor,
-            transforms : getAffineTransforms(el, this.element)
+            transforms : this.getTransforms(el)
         });
     }
 };
@@ -412,7 +417,7 @@ DomFreezer.prototype.drawElementBorder = function(el) {
             side : side,
             width : width,
             style : color,
-            transforms : getAffineTransforms(el, this.element)
+            transforms : this.getTransforms(el)
         });
     }
 };
@@ -428,7 +433,6 @@ DomFreezer.prototype.drawElementImage = function(el) {
         var image = this.loadedImages[imageUrl];
         var cols = 1, rows = 1;
        
-
         // TODO : temporary
         // should hanlde background-size and background-position
         var destWidth  = (el.tagName === 'IMG' ? el.clientWidth  : image.width); 
@@ -464,7 +468,7 @@ DomFreezer.prototype.drawElementImage = function(el) {
                         w : destWidth,
                         h : destHeight
                     },
-                    transforms : getAffineTransforms(el, this.element)
+                    transforms : this.getTransforms(el)
                 });
             }
         }
@@ -486,11 +490,20 @@ DomFreezer.prototype.draw = function(el) {
 DomFreezer.prototype.eraseElementBackground = function(el) {
     el.style.setProperty('background-color', 'transparent');
 };
+
+function toDataURLSupported() {
+//return true;
+	return false; // TODO
+}
+
 DomFreezer.prototype.eraseElementGradientAndImage = function(el) {
-    el.style.setProperty('background-image', 'none');
-    if (el.tagName === 'IMG') {
-        el.src = DomFreezer.DUMMY_IMAGE;
-    }
+
+	if (el !== this.element || ! toDataURLSupported()) {
+    	el.style.setProperty('background-image', 'none');
+    	if (el.tagName === 'IMG') {
+    	    el.src = DomFreezer.DUMMY_IMAGE;
+    	}
+	}
 };
 DomFreezer.prototype.eraseElementBorder = function(el) {
     var sides = ['left', 'top', 'right', 'bottom'];
@@ -513,12 +526,17 @@ DomFreezer.prototype.erase = function(el) {
 DomFreezer.prototype.place = function() {
     var parentNode = this.element.parentNode;
 
-    this.canvas.style.setProperty('position', 'absolute');
-    this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
-    this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
-    this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
+	if (toDataURLSupported()) {
+		// this.element.style.setProperty('background-image', 'url(/cache/static/i/sp-renew/scs.png)');
+		this.element.style.setProperty('background-image', 'url(' + this.canvas.toDataURL() + ')');
+	} else {
+    	this.canvas.style.setProperty('position', 'absolute');
+    	this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
+    	this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
+    	this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
 
-    this.element.insertBefore(this.canvas, this.element.firstChild);
+    	this.element.insertBefore(this.canvas, this.element.firstChild);
+	}
 /*
     if (parentNode.firstChild !== this.canvas) {
         parentNode.insertBefore(this.canvas, parentNode.firstChild);
