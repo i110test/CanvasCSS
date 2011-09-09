@@ -22,10 +22,10 @@ function isValidColor(color) {
 
 var transform_matrix_regex = (function() {
     var num = '([\\-\\d\\.]+?)',
-    	sep = '\\s*,\\s*',
-    	regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)',
-    	regex = new RegExp(regex_text);
-	return regex;
+        sep = '\\s*,\\s*',
+        regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)',
+        regex = new RegExp(regex_text);
+    return regex;
 })();
 var transform_rotate_regex = /rotate\((.+?)deg\)/;
 
@@ -73,9 +73,9 @@ DomFreezer = function(el) {
 };
 DomFreezer.DUMMY_IMAGE = 'img/dummy.png';
 DomFreezer.exports = {
-	getAffineTransform : getAffineTransform,
-	getAffineTransformWithOrigin : getAffineTransformWithOrigin,
-	
+    getAffineTransform : getAffineTransform,
+    getAffineTransformWithOrigin : getAffineTransformWithOrigin
+    
 };
 
 function calcOffset(el, isLeft) {
@@ -130,7 +130,7 @@ function getOffsetCenter(el) {
 */
 
 DomFreezer.prototype.getTransforms = function(el, upto) {
-	upto = upto || this.element;
+    upto = upto || this.element;
     var transform, center, transformed_center, tx, ty, transforms;
     while(true) {
         if (el === upto) {
@@ -139,9 +139,9 @@ DomFreezer.prototype.getTransforms = function(el, upto) {
         center = getOffsetCenter(el);
         transform = DomFreezer.exports.getAffineTransformWithOrigin(el, center);        
         if (transform) {
-			if (! transforms) {
-				transforms = [];
-			}
+            if (! transforms) {
+                transforms = [];
+            }
             transforms.push(transform);
         }
 
@@ -154,7 +154,7 @@ DomFreezer.prototype.getTransforms = function(el, upto) {
     }
 
     return transforms;
-}
+};
 
 function getOffsetCenter(el, base) {
     base = base || el.offsetParent; 
@@ -233,7 +233,7 @@ DomFreezer.prototype.init = function() {
 
 };
 
-DomFreezer.prototype._parseGradientPosition = function(pos, base) {
+DomFreezer.prototype._parseCSSValue = function(pos, base) {
     if (/px$/.test(pos)) {
         return numerize(pos);
     } else if (/%$/.test(pos)) {
@@ -321,10 +321,10 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
     var m;
     var sx, sy, ex, ey;
     if ((m = styleText.match(/-webkit-gradient\(linear,\s*(.*?)\s+(.*?),\s*(.*?)\s+(.*?),/))) {
-        sx = this._parseGradientPosition(m[1], el.clientWidth);
-        sy = this._parseGradientPosition(m[2], el.clientHeight);
-        ex = this._parseGradientPosition(m[3], el.clientWidth);
-        ey = this._parseGradientPosition(m[4], el.clientHeight);
+        sx = this._parseCSSValue(m[1], el.clientWidth);
+        sy = this._parseCSSValue(m[2], el.clientHeight);
+        ex = this._parseCSSValue(m[3], el.clientWidth);
+        ey = this._parseCSSValue(m[4], el.clientHeight);
     } else {
         throw 'fuck';
     }
@@ -346,13 +346,13 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
     var offsetTop  = calcOffsetTop(el, context);
 
     var start = {
-		x : offsetLeft + el.clientLeft + sx,
-		y : offsetTop  + el.clientTop  + sy
-	};
-	var end = {
-		x : offsetLeft + el.clientLeft + ex,
-		y : offsetTop  + el.clientTop  + ey
-	};
+        x : offsetLeft + el.clientLeft + sx,
+        y : offsetTop  + el.clientTop  + sy
+    };
+    var end = {
+        x : offsetLeft + el.clientLeft + ex,
+        y : offsetTop  + el.clientTop  + ey
+    };
     var region = {
         x : offsetLeft + el.clientLeft,
         y : offsetTop  + el.clientTop,
@@ -431,47 +431,90 @@ DomFreezer.prototype.drawElementImage = function(el) {
     var imageUrl = this._extractImageUrl(el);
     if (imageUrl && this.loadedImages[imageUrl]) {
         var image = this.loadedImages[imageUrl];
-        var cols = 1, rows = 1;
-       
-        // TODO : temporary
-        // should hanlde background-size and background-position
-        var destWidth  = (el.tagName === 'IMG' ? el.clientWidth  : image.width); 
-        var destHeight = (el.tagName === 'IMG' ? el.clientHeight : image.height); 
 
-        var bgrepeat = CSSResolver.resolve(el, 'background-repeat');
-        var sum;
-        if (bgrepeat === 'repeat' || bgrepeat === 'repeat-x') {
-            sum = destWidth;
-            while(sum < el.clientWidth) {
-                cols++;
-                sum += destWidth;
+        var offsetLeft = calcOffsetLeft(el, this.element) + el.clientLeft;
+        var offsetTop = calcOffsetTop(el, this.element) + el.clientTop;
+
+        if (el.tagName === 'IMG') {
+            this.renderer.drawImage({
+                url : imageUrl,
+                destRect : {
+                    x : offsetLeft,
+                    y : offsetTop,
+                    w : el.clientWidth,
+                    h : el.clientHeight
+                },
+                transforms : this.getTransforms(el)
+            });
+        } else {
+            var bgX = 0;
+            var bgY = 0;
+            var bgpos = CSSResolver.resolve(el, 'background-position');
+            if (bgpos && bgpos.match(/(.*)\s+(.*)/)) {
+                bgX = RegExp.$1;
+                bgY = RegExp.$2;
+                bgX = -(this._parseCSSValue(bgX));
+                bgY = -(this._parseCSSValue(bgY));
+                bgX = (bgX % image.width + image.width) % image.width; 
+                bgY = (bgY % image.height + image.height) % image.height; 
+            } 
+
+            var bgrepeat = CSSResolver.resolve(el, 'background-repeat');
+            var cols = 1, rows = 1;
+            var sum;
+            if (bgrepeat === 'repeat' || bgrepeat === 'repeat-x') {
+                cols = 1 + Math.max(0, Math.ceil((el.clientWidth - (image.width - bgX)) / image.width));
             }
-        }
-        if (bgrepeat === 'repeat' || bgrepeat === 'repeat-y') {
-            sum = destHeight;
-            while(sum < el.clientHeight) {
-                rows++;
-                sum += destHeight;
+            if (bgrepeat === 'repeat' || bgrepeat === 'repeat-y') {
+                rows = 1 + Math.max(0, Math.ceil((el.clientHeight - (image.height - bgY)) / image.height));
             }
+
+            for (var i = 0; i < rows; i++) {
+                for (var j = 0; j < cols; j++) {
+                    var srcX = 0;
+                    var srcY = 0;
+                    var srcWidth = image.width;
+                    var srcHeight = image.height;
+                    var destX = - bgX + image.width  * j;
+                    var destY = - bgY + image.height * i;
+                    if (destX + image.width > el.clientWidth) {
+                        srcWidth -= (destX + image.width - el.clientWidth);
+                    }
+                    if (destX < 0) {
+                        srcX -= destX;
+                        srcWidth += destX;
+                        destX = 0;
+                    }
+                    if (destY + image.height > el.clientHeight) {
+                        srcHeight -= (destY + image.height - el.clientHeight);
+                    }
+                    if (destY < 0) {
+                        srcY -= destY;
+                        srcHeight += destY;
+                        destY = 0;
+                    }
+                    this.renderer.drawImage({
+                        url : imageUrl,
+                        srcRect : {
+                            x : srcX, 
+                            y : srcY, 
+                            w : srcWidth,
+                            h : srcHeight
+                        },
+                        destRect : {
+                            x : offsetLeft + destX,
+                            y : offsetTop + destY,
+                            w : srcWidth,
+                            h : srcHeight
+                        },
+                        transforms : this.getTransforms(el)
+                    });
+                }
+            }
+
         }
 
-        var offsetLeft = calcOffsetLeft(el, this.element);
-        var offsetTop  = calcOffsetTop(el, this.element);
 
-        for (var i = 0; i < rows; i++) {
-            for (var j = 0; j < cols; j++) {
-                this.renderer.drawImage({
-                    url : imageUrl,
-                    destRect : {
-                        x : offsetLeft + el.clientLeft + destWidth  * j,
-                        y : offsetTop  + el.clientTop + destHeight * i,
-                        w : destWidth,
-                        h : destHeight
-                    },
-                    transforms : this.getTransforms(el)
-                });
-            }
-        }
     }
 };
 DomFreezer.prototype.draw = function(el) {
@@ -493,17 +536,17 @@ DomFreezer.prototype.eraseElementBackground = function(el) {
 
 function toDataURLSupported() {
 //return true;
-	return false; // TODO
+    return false; // TODO
 }
 
 DomFreezer.prototype.eraseElementGradientAndImage = function(el) {
 
-	if (el !== this.element || ! toDataURLSupported()) {
-    	el.style.setProperty('background-image', 'none');
-    	if (el.tagName === 'IMG') {
-    	    el.src = DomFreezer.DUMMY_IMAGE;
-    	}
-	}
+    if (el !== this.element || ! toDataURLSupported()) {
+        el.style.setProperty('background-image', 'none');
+        if (el.tagName === 'IMG') {
+            el.src = DomFreezer.DUMMY_IMAGE;
+        }
+    }
 };
 DomFreezer.prototype.eraseElementBorder = function(el) {
     var sides = ['left', 'top', 'right', 'bottom'];
@@ -526,17 +569,17 @@ DomFreezer.prototype.erase = function(el) {
 DomFreezer.prototype.place = function() {
     var parentNode = this.element.parentNode;
 
-	if (toDataURLSupported()) {
-		// this.element.style.setProperty('background-image', 'url(/cache/static/i/sp-renew/scs.png)');
-		this.element.style.setProperty('background-image', 'url(' + this.canvas.toDataURL() + ')');
-	} else {
-    	this.canvas.style.setProperty('position', 'absolute');
-    	this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
-    	this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
-    	this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
+    if (toDataURLSupported()) {
+        // this.element.style.setProperty('background-image', 'url(/cache/static/i/sp-renew/scs.png)');
+        this.element.style.setProperty('background-image', 'url(' + this.canvas.toDataURL() + ')');
+    } else {
+        this.canvas.style.setProperty('position', 'absolute');
+        this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
+        this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
+        this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
 
-    	this.element.insertBefore(this.canvas, this.element.firstChild);
-	}
+        this.element.insertBefore(this.canvas, this.element.firstChild);
+    }
 /*
     if (parentNode.firstChild !== this.canvas) {
         parentNode.insertBefore(this.canvas, parentNode.firstChild);

@@ -30,6 +30,13 @@ body {
     
     -webkit-transform : rotate(45deg);
 }
+
+.bgimage {
+    background-image : url(img/kyoto.jpg);
+    background-position : 10px 0px;
+    width : 200px;
+    height : 200px;
+}
 /*
 #target {
     background-image : url("img/fire.jpg");
@@ -94,6 +101,7 @@ body {
 
 <script type="text/javascript" src="CSSResolver.js"></script>
 <script type="text/javascript" src="CSSRenderer.js"></script>
+<script type="text/javascript" src="Geometry.js"></script>
 <script type="text/javascript" src="DomFreezer.js"></script>
 <script type="text/javascript">
 
@@ -176,8 +184,15 @@ window.addEventListener('DOMContentLoaded', function() {
         -->
         </div>
     
+
         <div id="inner2">
         </div>
+        <div id="inner3" class="bgimage">
+        </div>
+<!--
+        <div id="inner3" class="bgimage" style="z-index:10000; position: absolute;">
+        </div>
+-->
     </div>
 </div>
 </body>
