@@ -10,10 +10,11 @@ function applyDefault(obj, def) {
         }
     }
 }
-CSSRenderer = function(canvas, origin) {
+CSSRenderer = function(canvas, origin, scale) {
     this.canvas = canvas;
     this.context = this.canvas.getContext('2d');
     this.origin = origin;
+	this.scale = scale;
     this.size = {
         width  : this.canvas.width  - this.origin.x,
         height : this.canvas.height - this.origin.y
@@ -28,7 +29,7 @@ CSSRenderer.prototype._draw = function(drawFunc, transforms) {
     if (transforms) {
         for (var i = 0; i < transforms.length; i++) {
             var m = transforms[i];
-            this.context.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+            this.context.transform(m[0], m[1], m[2], m[3], m[4] * this.scale, m[5] * this.scale);
         }
     }
 
@@ -36,6 +37,7 @@ CSSRenderer.prototype._draw = function(drawFunc, transforms) {
 
     this.context.restore();
 };
+//TODO: drawBackground?
 CSSRenderer.prototype.fillRect = function fillRect(args) {
     var x = args.x || 0,
         y = args.y || 0,
@@ -46,10 +48,28 @@ CSSRenderer.prototype.fillRect = function fillRect(args) {
 
     this._draw(function() {
         this.context.fillStyle = style;
-        this.context.fillRect(x, y, w, h);
+        this.context.fillRect(x * this.scale, y * this.scale, w * this.scale, h * this.scale);
     }, transforms);
     
 };
+
+CSSRenderer.prototype.drawText = function drawText(args) {
+	var text = args.text,
+		x = args.x,
+		y = args.y,
+		font = args.font,
+		style = args.style,
+		maxWidth = args.maxWidth || undefined,
+		transforms = args.transforms;
+
+    this._draw(function() {
+		this.context.font = font;
+        this.context.fillStyle = style;
+		this.context.textBaseline = 'top';	//TODO
+		this.context.fillText(text, x * this.scale, y * this.scale, maxWidth * this.scale);
+    }, transforms);
+	
+}
 CSSRenderer.prototype.drawBorderLine = function drawLine(args) {
     var x1 = args.x1,
         y1 = args.y1,
@@ -84,11 +104,11 @@ CSSRenderer.prototype.drawBorderLine = function drawLine(args) {
 
     this._draw(function() {
         this.context.strokeStyle = style;
-        this.context.lineWidth = width;
+        this.context.lineWidth = width * this.scale;
 // TODO: diffX and diffY should be here?
         this.context.beginPath();
-        this.context.moveTo(x1 + diffX1, y1 + diffY1);
-        this.context.lineTo(x2 + diffX2, y2 + diffY2);
+        this.context.moveTo((x1 + diffX1) * this.scale, (y1 + diffY1) * this.scale);
+        this.context.lineTo((x2 + diffX2) * this.scale, (y2 + diffY2) * this.scale);
         this.context.stroke();
     }, transforms);
 };
@@ -96,6 +116,7 @@ CSSRenderer.prototype.drawImage = function drawImage(args) {
     var url = args.url,
         img = new Image(),
         sr, dr,
+		maskImage = args.maskImage,
         transforms;
     img.src = url;
 
@@ -110,11 +131,28 @@ CSSRenderer.prototype.drawImage = function drawImage(args) {
     transforms = args.transforms;
 
     this._draw(function() {
-        this.context.drawImage(
-            img, 
-            sr.x, sr.y, sr.w, sr.h, 
-            dr.x, dr.y, dr.w, dr.h
-        );
+		if (maskImage) {
+			var buffer = document.createElement('canvas');
+			buffer.width = dr.w * this.scale;
+			buffer.height = dr.h * this.scale;
+			var bufferContext = buffer.getContext('2d');
+			bufferContext.drawImage(
+				img,
+        	    sr.x, sr.y, sr.w, sr.h, 
+        	    0, 0, dr.w * this.scale, dr.h * this.scale
+			);	
+			bufferContext.globalCompositeOperation = 'destination-in';
+			bufferContext.drawImage(maskImage, 0, 0, maskImage.width * this.scale, maskImage.height * this.scale);
+		
+			this.context.drawImage(buffer, dr.x * this.scale, dr.y * this.scale);	
+			
+		} else {
+        	this.context.drawImage(
+        	    img, 
+        	    sr.x, sr.y, sr.w, sr.h, 
+        	    dr.x * this.scale, dr.y * this.scale, dr.w * this.scale, dr.h * this.scale
+        	);
+		}
     }, transforms);
 };
 CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
@@ -125,7 +163,7 @@ CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
         transforms = args.transforms;
 
     grad = this.context.createLinearGradient(
-        start.x, start.y, end.x, end.y);
+        start.x * this.scale, start.y * this.scale, end.x * this.scale, end.y * this.scale);
 
     colorStops.forEach(function(colorStop) {
         grad.addColorStop(colorStop.pos, colorStop.color);
@@ -133,7 +171,7 @@ CSSRenderer.prototype.drawLinearGradient = function drawLinearGradient(args) {
 
     this._draw(function() {
         this.context.fillStyle = grad;
-        this.context.fillRect(region.x, region.y, region.width, region.height);
+        this.context.fillRect(region.x * this.scale, region.y * this.scale, region.width * this.scale, region.height * this.scale);
     }, transforms);
 };
 

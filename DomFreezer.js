@@ -2,48 +2,52 @@ var DomFreezer;
 
 (function() {
 
+var regexCache = {};
+(function(C) {
+	C.transformMatrix = (function() {
+	    var num = '([\\-\\d\\.]+?)',
+	        sep = '\\s*,\\s*',
+	        regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)',
+	        regex = new RegExp(regex_text);
+	    return regex;
+	})();
+	C.transformRotate = /rotate\((.+?)deg\)/;
+	C.rgb = /rgb\(\d+,\s*\d+,\s*\d+\)/;
+	C.rgba = /rgba\(\d+,\s*\d+,\s*\d+,\s*([\d\.]+)\)/;
+	C.url = /url\(["']?(.*)["']?\)/;
+	C.pair = /(.*)\s+(.*)/;
+})(regexCache);
+
 function numerize(value) {
-    if (/(-?[\d\.]+)(?:px|%)$/.test(value)) {
-        return +RegExp.$1;
+	var m;
+    if (m = value.match(/(-?[\d\.]+)(?:px|%)$/)) {
+        return +(m[1]);
     } else {
         return undefined;
     }
 }
 
 function isValidColor(color) {
-    if (color.match(/rgb\(\d+,\s*\d+,\s*\d+\)/)) {
+	var m;
+    if (color.match(regexCache.rgb)) {
         return true;
-    } else if (! color.match(/rgba\(\d+,\s*\d+,\s*\d+,\s*([\d\.]+)\)/)) {
+    } else if (! (m = color.match(regexCache.rgba))) {
         throw new Error('unexpected color format : ' + color);
     }
-    var alpha = +(RegExp.$1);
+    var alpha = +(m[1]);
     return (alpha > 0);
 }
 
-var transform_matrix_regex = (function() {
-    var num = '([\\-\\d\\.]+?)',
-        sep = '\\s*,\\s*',
-        regex_text = 'matrix\\(' + [num, sep, num, sep, num, sep, num, sep, num, sep, num].join('') + '\\)',
-        regex = new RegExp(regex_text);
-    return regex;
-})();
-var transform_rotate_regex = /rotate\((.+?)deg\)/;
-
 function getAffineTransform(el) {
     var transform = CSSResolver.resolve(el, '-webkit-transform');
+	var m;
     if (! transform) {
         return null;
     }
-    if (transform.match(transform_matrix_regex)) {
-        var m11 = +(RegExp.$1),
-            m12 = +(RegExp.$2),
-            m21 = +(RegExp.$3),
-            m22 = +(RegExp.$4),
-            dx  = +(RegExp.$5),
-            dy  = +(RegExp.$6);
-        return [m11, m12, m21, m22, dx, dy];
-    } else if (transform.match(transform_rotate_regex)) {
-        var deg = +(RegExp.$1);
+    if (m = transform.match(regexCache.transformMatrix)) {
+        return [+(m[1]), +(m[2]), +(m[3]), +(m[4]), +(m[5]), +(m[6])];
+    } else if (m = transform.match(regexCache.transformRotate)) {
+        var deg = +(m[1]);
         var rad = deg * Math.PI / 180;
         return [Math.cos(rad), -Math.sin(rad), Math.sin(rad), Math.cos(rad), 0, 0];
     }
@@ -55,9 +59,9 @@ function getAffineTransformWithOrigin(el, origin) {
     if (! transform) {
         return null;
     }
-    var transformed_origin = Geometry.transformVector(origin, transform);
-    tx = origin[0] - transformed_origin[0];
-    ty = origin[1] - transformed_origin[1];
+    var transformed_origin = Geometry.transformVector(origin, [transform[0], transform[1], transform[2], transform[3], 0, 0]);
+    var tx = origin[0] - transformed_origin[0];
+    var ty = origin[1] - transformed_origin[1];
 
     transform[4] += tx;
     transform[5] += ty;
@@ -70,12 +74,15 @@ DomFreezer = function(el) {
     this.canvas = document.createElement('canvas');
     this.canvas.style.setProperty('display', 'none');
     this.renderer = undefined;
+	this.scale = 2.0;
 };
 DomFreezer.DUMMY_IMAGE = 'img/dummy.png';
 DomFreezer.exports = {
     getAffineTransform : getAffineTransform,
-    getAffineTransformWithOrigin : getAffineTransformWithOrigin
-    
+    getAffineTransformWithOrigin : getAffineTransformWithOrigin,
+	calcOffsetLeft : calcOffsetLeft,
+	calcOffsetTop : calcOffsetTop,
+	isValidColor : isValidColor
 };
 
 function calcOffset(el, isLeft) {
@@ -156,6 +163,13 @@ DomFreezer.prototype.getTransforms = function(el, upto) {
     return transforms;
 };
 
+function getOffsetCenter(el) {
+	return [
+		el.offsetWidth / 2,
+		el.offsetHeight / 2
+	];
+}
+/*
 function getOffsetCenter(el, base) {
     base = base || el.offsetParent; 
     return [
@@ -163,11 +177,13 @@ function getOffsetCenter(el, base) {
         calcOffsetTop(el, base)  + (el.offsetHeight / 2)
     ];
 }
+*/
 
 DomFreezer.prototype.init = function() {
+	var that = this;
 
     function updateRect(el, rect) {
-        var elRect = getOffsetRect(el);
+        var elRect = getOffsetRect(el, that.element);
         var center = getOffsetCenter(el);
         var i;
 
@@ -210,40 +226,34 @@ DomFreezer.prototype.init = function() {
         b : Number.NEGATIVE_INFINITY 
     };
     updateRect(this.element, rect);
-/*
-    var anchorLeft = calcOffsetLeft(this.element);
-    var anchorTop  = calcOffsetTop(this.element);
-    rect.l -= anchorLeft;
-    rect.r -= anchorLeft;
-    rect.t -= anchorTop;
-    rect.b -= anchorTop;
-*/
-    this.canvas.width  = rect.r - rect.l;
-    this.canvas.height = rect.b - rect.t;
+
+    this.canvas.width  = (rect.r - rect.l) * this.scale;
+    this.canvas.height = (rect.b - rect.t) * this.scale;
+	this.canvas.style.setProperty('-webkit-transform', 'scale(' + (1 / this.scale) + ')');
+	this.canvas.style.setProperty('-webkit-transform-origin', '0 0');
 
     var origin = {
-        x : Math.max(-(rect.l), 0),
-        y : Math.max(-(rect.t), 0)
-/*
-        x : (rect.l < 0) ? - rect.l : 0,
-        y : (rect.t < 0) ? - rect.t : 0
-*/
+        x : Math.max(-(rect.l), 0) * this.scale,
+        y : Math.max(-(rect.t), 0) * this.scale
     };
-    this.renderer = new CSSRenderer(this.canvas, origin);
 
+    this.renderer = new CSSRenderer(this.canvas, origin, this.scale);
+
+	// console.log([origin.x, origin.y, this.canvas.width, this.canvas.height]);
 };
 
 DomFreezer.prototype._parseCSSValue = function(pos, base) {
     if (/px$/.test(pos)) {
         return numerize(pos);
     } else if (/%$/.test(pos)) {
-        return Math.round(numerize(pos) / 100 * base);
+        return base ? Math.round(numerize(pos) / 100 * base) : null;
+//TODO : handle em
     } else if (pos === 'left' || pos === 'top') {
         return 0;
     } else if (pos === 'right' || pos === 'bottom') {
-        return base;
+        return base || null;
     } else if (pos === 'center') {
-        return Math.round(base / 2);
+        return base ? Math.round(base / 2) : null;
     } else {
         return null;
     }
@@ -258,6 +268,10 @@ DomFreezer.prototype.preloadImages = function(callback) {
         if (url) {
             accum.push(url);
         }
+		url = that._extractMaskImageUrl(el);
+		if (url) {
+			accum.push(url);
+		}
 
         for(var i = 0; i < el.children.length; i++) {
             var child = el.children[i];
@@ -296,24 +310,34 @@ DomFreezer.prototype._extractImageUrl = function(el) {
         return el.src;
     } 
     var bgimg = CSSResolver.resolve(el, 'background-image');
-    if (bgimg && bgimg.match(/url\(["']?(.*)["']?\)/)) {
-        return RegExp.$1;
+	var m;
+    if (bgimg && (m = bgimg.match(regexCache.url))) {
+        return m[1];
     }
-    return undefined;
+    return null;
+};
+DomFreezer.prototype._extractMaskImageUrl = function(el) {
+	var maskimg = CSSResolver.resolve(el, '-webkit-mask-image');
+	var m;
+    if (maskimg && (m = maskimg.match(regexCache.url))) {
+		return m[1];
+	}
+	return null;
 };
 DomFreezer.prototype._extractGradientArgs = function(el, context) {
     var styleText = CSSResolver.resolve(el, 'background-image');
     if (! /-webkit-gradient/.test(styleText)) {
         return null;
     }
+	var m;
 
     // this way to parse webkig-linear-gradient is very temporary,
     // and replaced by parser generated by ANTLR or else
 
-    if (! styleText.match(/-webkit-gradient\((.*?),/)) {
+    if (! (m = styleText.match(/-webkit-gradient\((.*?),/))) {
         return null;
     }
-    var shape = RegExp.$1;
+    var shape = m[1];
     if (shape !== 'linear') {
         return null;
     }
@@ -331,11 +355,11 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
 
     var colorStops = [];
 
-    styleText.match(/from\s*\((rgb\(.*?\))\)/);
-    colorStops.push({ pos : 0.0, color : RegExp.$1 }); 
+    m = styleText.match(/from\s*\((rgb\(.*?\))\)/);
+    colorStops.push({ pos : 0.0, color : m[1] }); 
 
-    styleText.match(/to\s*\((rgb\(.*?\))\)/);
-    colorStops.push({ pos : 1.0, color : RegExp.$1 }); 
+    m = styleText.match(/to\s*\((rgb\(.*?\))\)/);
+    colorStops.push({ pos : 1.0, color : m[1] }); 
 
     var regex = /color-stop\s*\(\s*(.*?)\s*,\s*(rgb\(.*?\))\s*\)/g;
     while ((m = regex.exec(styleText))) {
@@ -370,7 +394,7 @@ DomFreezer.prototype._extractGradientArgs = function(el, context) {
 };
 DomFreezer.prototype.drawElementBackgroundColor = function(el) {
     var bgcolor = CSSResolver.resolve(el, 'background-color');
-    if (bgcolor && isValidColor(bgcolor)) {
+    if (bgcolor && DomFreezer.exports.isValidColor(bgcolor)) {
         this.renderer.fillRect({
             x : calcOffsetLeft(el, this.element) + el.clientLeft,
             y : calcOffsetTop(el, this.element) + el.clientTop,
@@ -421,6 +445,46 @@ DomFreezer.prototype.drawElementBorder = function(el) {
         });
     }
 };
+DomFreezer.prototype.drawElementText = function(el) {
+	// TODO: shadow!!
+
+	// assumed el is span or header tag, and display is inline
+	var text = el.innerText;
+	var x = calcOffsetLeft(el, this.element) + 
+		el.clientLeft + 
+		this._parseCSSValue(CSSResolver.resolve(el, 'padding-left')) + 
+		this._parseCSSValue(CSSResolver.resolve(el, 'text-indent'));
+	var y = calcOffsetTop(el, this.element) + 
+		el.clientTop  + 
+		this._parseCSSValue(CSSResolver.resolve(el, 'padding-top'));
+
+	var fontStyle   = CSSResolver.resolve(el, 'font-style');
+	var fontVariant = CSSResolver.resolve(el, 'font-variant');
+	var fontWeight  = CSSResolver.resolve(el, 'font-weight');
+	var fontSize    = CSSResolver.resolve(el, 'font-size');
+	var lineHeight  = CSSResolver.resolve(el, 'line-height');
+	var fontFamily  = CSSResolver.resolve(el, 'font-family');
+//TODO: em
+fontSize = Math.round(numerize(fontSize) * this.scale) + 'px';
+	var font =  (fontStyle ? fontStyle + ' ' : '') + 
+				(fontVariant ? fontVariant + ' ' : '') + 
+				(fontWeight ? fontWeight + ' ' : '') + 
+				fontSize +  
+				(lineHeight ? '/' + lineHeight : '') + ' ' +  
+				fontFamily;	
+	var style = CSSResolver.resolve(el, 'color');
+	var maxWidth = el.clientWidth;
+
+	this.renderer.drawText({
+		text : text,
+		x : x,
+		y : y,
+		font : font,
+		style : style,
+		maxWidth : maxWidth,
+        transforms : this.getTransforms(el)
+	});
+};
 DomFreezer.prototype.drawElementGradient = function(el) {
     var args = this._extractGradientArgs(el, this.element);
     if (args) {
@@ -428,12 +492,24 @@ DomFreezer.prototype.drawElementGradient = function(el) {
     }
 };
 DomFreezer.prototype.drawElementImage = function(el) {
+	var m;
     var imageUrl = this._extractImageUrl(el);
     if (imageUrl && this.loadedImages[imageUrl]) {
         var image = this.loadedImages[imageUrl];
 
         var offsetLeft = calcOffsetLeft(el, this.element) + el.clientLeft;
         var offsetTop = calcOffsetTop(el, this.element) + el.clientTop;
+
+		// mask image
+		// TODO: mask should be processed to all elements,
+		// this is much temporal
+		var maskImage = undefined;
+    	var maskImageUrl = this._extractMaskImageUrl(el);
+    	if (maskImageUrl && this.loadedImages[maskImageUrl]) {
+    		maskImage = this.loadedImages[maskImageUrl];
+		}
+
+		var transforms = this.getTransforms(el);
 
         if (el.tagName === 'IMG') {
             this.renderer.drawImage({
@@ -444,20 +520,28 @@ DomFreezer.prototype.drawElementImage = function(el) {
                     w : el.clientWidth,
                     h : el.clientHeight
                 },
-                transforms : this.getTransforms(el)
+				maskImage : maskImage,
+                transforms : transforms
             });
         } else {
             var bgX = 0;
             var bgY = 0;
             var bgpos = CSSResolver.resolve(el, 'background-position');
-            if (bgpos && bgpos.match(/(.*)\s+(.*)/)) {
-                bgX = RegExp.$1;
-                bgY = RegExp.$2;
-                bgX = -(this._parseCSSValue(bgX));
-                bgY = -(this._parseCSSValue(bgY));
+            if (bgpos && (m = bgpos.match(regexCache.pair))) {
+                bgX = -(this._parseCSSValue(m[1]));
+                bgY = -(this._parseCSSValue(m[2]));
                 bgX = (bgX % image.width + image.width) % image.width; 
                 bgY = (bgY % image.height + image.height) % image.height; 
             } 
+			var scaleWidth  = 1.0;
+			var scaleHeight = 1.0;
+			var bgsize = CSSResolver.resolve(el, 'background-size');
+			if (bgsize && (m = bgsize.match(regexCache.pair))) {
+				var sw = this._parseCSSValue(m[1]);
+				var sh = this._parseCSSValue(m[2]);
+				scaleWidth  = sw / image.width;
+				scaleHeight = sh / image.height;
+			}
 
             var bgrepeat = CSSResolver.resolve(el, 'background-repeat');
             var cols = 1, rows = 1;
@@ -496,10 +580,10 @@ DomFreezer.prototype.drawElementImage = function(el) {
                     this.renderer.drawImage({
                         url : imageUrl,
                         srcRect : {
-                            x : srcX, 
-                            y : srcY, 
-                            w : srcWidth,
-                            h : srcHeight
+                            x : srcX / scaleWidth, 
+                            y : srcY / scaleHeight, 
+                            w : srcWidth / scaleWidth,
+                            h : srcHeight / scaleHeight
                         },
                         destRect : {
                             x : offsetLeft + destX,
@@ -507,7 +591,8 @@ DomFreezer.prototype.drawElementImage = function(el) {
                             w : srcWidth,
                             h : srcHeight
                         },
-                        transforms : this.getTransforms(el)
+						maskImage : maskImage,
+                        transforms : transforms
                     });
                 }
             }
@@ -524,6 +609,10 @@ DomFreezer.prototype.draw = function(el) {
     this.drawElementGradient(el);
     this.drawElementImage(el);
     this.drawElementBorder(el);
+
+	if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+		this.drawElementText(el);
+	}
 
     for (var i = 0; i < el.children.length; i++) {
         this.draw(el.children[i]);
@@ -554,12 +643,20 @@ DomFreezer.prototype.eraseElementBorder = function(el) {
         el.style.setProperty('border-' + sides[i] + '-width', '0');
     }
 };
+DomFreezer.prototype.eraseElementText = function(el) {
+	el = el || this.element;
+	el.innerText = '';
+};
 DomFreezer.prototype.erase = function(el) {
     el = el || this.element;
 
     this.eraseElementBackground(el);
     this.eraseElementGradientAndImage(el);
     this.eraseElementBorder(el);
+
+	if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+		this.eraseElementText(el);
+	}
 
     for (var i = 0; i < el.children.length; i++) {
         this.erase(el.children[i]);
@@ -570,12 +667,11 @@ DomFreezer.prototype.place = function() {
     var parentNode = this.element.parentNode;
 
     if (toDataURLSupported()) {
-        // this.element.style.setProperty('background-image', 'url(/cache/static/i/sp-renew/scs.png)');
         this.element.style.setProperty('background-image', 'url(' + this.canvas.toDataURL() + ')');
     } else {
         this.canvas.style.setProperty('position', 'absolute');
-        this.canvas.style.setProperty('left', (calcOffsetLeft(this.element, parentNode) - this.renderer.origin.x) + 'px');
-        this.canvas.style.setProperty('top',  (calcOffsetTop(this.element, parentNode) - this.renderer.origin.y) + 'px');
+        this.canvas.style.setProperty('left', (- this.renderer.origin.x) + 'px');
+        this.canvas.style.setProperty('top',  (- this.renderer.origin.y) + 'px');
         this.canvas.style.setProperty('z-index', '-10000'); // TODO: replace magic number
 
         this.element.insertBefore(this.canvas, this.element.firstChild);

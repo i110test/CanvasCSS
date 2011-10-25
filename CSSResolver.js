@@ -21,7 +21,7 @@ C._calcSelectorScore = function(selectorText) {
 // TODO: some Android don't have webkitMatchesSelector
 C.resolve = function(el, prop) {
     var maxScore;
-    var computedStyle = document.defaultView.getComputedStyle(el);
+    var computedStyle = getComputedStyle(el);
     var value;
     var regex, m, styles, styleSheet, cssRule;
     var score, styleValue;
@@ -33,7 +33,7 @@ C.resolve = function(el, prop) {
     }
 
     // the way to hell..
-    regex = new RegExp(prop + '\\s*:\\s*(.*?)\\s*;', 'g');
+	regex = new RegExp(prop + '\\s*:\\s*(.*?)\\s*;', 'g');
     styles = [];
     for (i = 0; i < document.styleSheets.length; i++) {
         styleSheet = document.styleSheets[i];
